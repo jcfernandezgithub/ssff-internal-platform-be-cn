@@ -5,7 +5,6 @@ import os
 import uuid
 from app.procesar import ejecutar_proceso
 
-
 app = FastAPI()
 
 os.makedirs("public", exist_ok=True)
