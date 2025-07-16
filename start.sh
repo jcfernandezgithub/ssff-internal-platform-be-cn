@@ -1,4 +1,3 @@
 #!/bin/bash
-
-# Ejecutar tu API FastAPI con uvicorn
-exec uvicorn app.main:app --host 0.0.0.0 --port 10000
+playwright install --with-deps
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
