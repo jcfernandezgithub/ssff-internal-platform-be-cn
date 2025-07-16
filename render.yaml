@@ -5,6 +5,7 @@ services:
     plan: free
     buildCommand: |
       pip install -r requirements.txt
+      playwright install --with-deps
     startCommand: ./start.sh
     envVars:
       - key: GEMINI_API_KEY

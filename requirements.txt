@@ -1,10 +1,6 @@
 fastapi
-uvicorn
-requests
-PyPDF2
+uvicorn[standard]
 playwright
-beautifulsoup4
-python-dotenv
+pdfplumber
+bs4
 google-generativeai
-playwright==1.42.0
-greenlet==3.0.3
