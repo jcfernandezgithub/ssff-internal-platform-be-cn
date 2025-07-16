@@ -573,7 +573,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
         estado["progreso"] = 0
 
         print("🤖 Enviando a Gemini...")
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY", "AIzaSyAl4sGdg1dbVHwEIhEsBLzv6O7qtRKonVw"))
+        genai.configure(api_key="AIzaSyAl4sGdg1dbVHwEIhEsBLzv6O7qtRKonVw")
         model = genai.GenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
 
         prompt = f"""
