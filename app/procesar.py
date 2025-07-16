@@ -535,7 +535,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
         print("🚀 Iniciando proceso de scraping")
         with sync_playwright() as p:
             print("🧭 Lanzando navegador...")
-            browser = p.webkit.launch(headless=True)
+            browser = p.chromium.launch(headless=True)
             page = browser.new_page()
             print(f"🌐 Navegando a {url}")
             page.goto(url)
