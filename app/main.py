@@ -3,7 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 import uuid
-from procesar import ejecutar_proceso
+from app.procesar import ejecutar_proceso
+
 
 app = FastAPI()
 
