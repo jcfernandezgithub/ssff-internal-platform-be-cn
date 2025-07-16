@@ -7,4 +7,4 @@ beautifulsoup4
 python-dotenv
 google-generativeai
 playwright==1.42.0
-greenlet==2.0.2
+greenlet==3.0.3
