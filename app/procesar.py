@@ -517,20 +517,6 @@ from bs4 import BeautifulSoup
 import google.generativeai as genai
 from app.utils import extraer_texto_pdf  # Asegúrate de tener esta función
 
-def extraer_texto_pdf(pdf_url):
-    try:
-        response = requests.get(pdf_url, timeout=10)
-        response.raise_for_status()
-        with BytesIO(response.content) as pdf_file:
-            reader = PdfReader(pdf_file)
-            texto = ""
-            for page in reader.pages:
-                texto += page.extract_text() or ""
-            return texto.strip()
-    except Exception as e:
-        print(f"❌ Error leyendo PDF {pdf_url}: {e}")
-        return ""
-
 def ejecutar_proceso(url: str, output_path: str, estado: dict):
     try:
         print("🚀 Iniciando proceso de scraping")
