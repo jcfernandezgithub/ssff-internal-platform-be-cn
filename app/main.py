@@ -6,6 +6,7 @@ import os
 import uuid
 import json
 from app.procesar import ejecutar_proceso  # Asegúrate que esta ruta sea correcta
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -19,6 +20,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+
+@app.get("/descargar/{id}")
+def descargar_archivo(id: str):
+    archivo_path = f"public/{id}.csv"
+    if os.path.exists(archivo_path):
+        return FileResponse(
+            archivo_path,
+            media_type="text/csv",
+            filename="resultado.csv"
+        )
+    return {"error": "Archivo no disponible"}
 
 @app.post("/procesar-url")
 async def procesar_url(request: Request, background_tasks: BackgroundTasks):
