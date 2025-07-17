@@ -554,7 +554,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
         estado["procesados"] = 0
         estado["progreso"] = 0
 
-        genai.configure(api_key="TU_API_KEY")
+        genai.configure(api_key="AIzaSyAl4sGdg1dbVHwEIhEsBLzv6O7qtRKonVw")
         model = genai.GenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
 
         # ✅ Prompt actualizado
