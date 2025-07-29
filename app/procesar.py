@@ -82,10 +82,11 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
              open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
 
             json_file.write("[\n")
-            writer = csv.DictWriter(csv_file, fieldnames=["nombre_original", "nombre_nuevo", "pdf"])
+            writer = csv.DictWriter(csv_file, fieldnames=["nombre_original", "nombre_nuevo", "rut", "pdf"])
             writer.writeheader()
 
             first = True
+            # for entry in json_data:
             for i, entry in enumerate(json_data):
                 if i >= 10:
                     break
@@ -97,6 +98,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
                 {{
                 "nombre_original": "...",
                 "nombre_nuevo": "...",
+                "rut": "...",
                 "pdf": "{entry['pdf']}"
                 }}
                 Si no, responde solo con null.
