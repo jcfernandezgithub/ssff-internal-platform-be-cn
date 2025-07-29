@@ -158,6 +158,8 @@ from app.utils import extraer_texto_pdf  # Asegúrate de tener esta función
 #     except Exception as e:
 #         print(f"❌ Error general en ejecutar_proceso: {e}")
 #         estado["status"] = "error"
+
+
 def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str):
     try:
         print("🚀 Iniciando proceso de scraping")
@@ -187,11 +189,24 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
             tds = tr.find_all("td")
             if not tds:
                 continue
+
             text = tds[0].get_text(strip=True)
+
             if "Solicitudes de Cambios de Nombre" in text:
                 start_collecting = True
                 print("🔍 Se encontró el encabezado de la sección de cambios de nombre")
                 continue
+
+            # 🔴 Corte al detectar nuevo encabezado fuera de la sección deseada
+            if start_collecting and (
+                "Reconstituciones Inscripción de Dominio" in text or
+                "Rectificaciones" in text or
+                text.startswith("Reconstituciones") or
+                text.startswith("Rectificaciones")
+            ):
+                print("🛑 Sección de cambios de nombre finalizada")
+                break
+
             if start_collecting and len(tds) >= 2:
                 nombre = tds[0].get_text(strip=True)
                 a_tag = tds[1].find("a")
@@ -207,6 +222,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
         with open(estado_path, "w") as f:
             json.dump(estado, f)
 
+        # 🔐 Configurar Gemini
         genai.configure(api_key="AIzaSyAl4sGdg1dbVHwEIhEsBLzv6O7qtRKonVw")
         model = genai.GenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
 
@@ -267,11 +283,8 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                     print(f"💬 Gemini devolvió:\n{content}")
                     print(f"🧨 Error: {e}")
 
-                # Actualizar progreso
                 estado["procesados"] += 1
                 estado["progreso"] = round(estado["procesados"] * 100 / estado["total"])
-
-                # ✅ Guardar el estado actualizado
                 with open(estado_path, "w") as f:
                     json.dump(estado, f)
 
@@ -290,3 +303,4 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
         estado["status"] = "error"
         with open(estado_path, "w") as f:
             json.dump(estado, f)
+
