@@ -6,7 +6,6 @@ import os
 import uuid
 import json
 from app.procesar import ejecutar_proceso  # Asegúrate que esta ruta sea correcta
-from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -15,24 +14,11 @@ app.mount("/static", StaticFiles(directory="public"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Podés reemplazar "*" por ["http://localhost:4200"] en producción
+    allow_origins=["*"],  # En producción, reemplazar con el dominio real
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-
-@app.get("/descargar/{id}")
-def descargar_archivo(id: str):
-    archivo_path = f"public/{id}.csv"
-    if os.path.exists(archivo_path):
-        return FileResponse(
-            archivo_path,
-            media_type="text/csv",
-            filename="resultado.csv"
-        )
-    return {"error": "Archivo no disponible"}
 
 @app.post("/procesar-url")
 async def procesar_url(request: Request, background_tasks: BackgroundTasks):
@@ -58,7 +44,8 @@ async def procesar_url(request: Request, background_tasks: BackgroundTasks):
         json.dump(estado, f)
 
     def wrapper():
-        ejecutar_proceso(url, archivo_path, estado)
+        # ✅ Pasamos también el path del estado para actualizarlo en tiempo real
+        ejecutar_proceso(url, archivo_path, estado, estado_path)
         with open(estado_path, "w") as f:
             json.dump(estado, f)
 
@@ -74,7 +61,14 @@ def obtener_estado(id: str):
     return {"status": "no_encontrado"}
 
 @app.get("/descargar/{id}")
-def descargar(id: str):
+def descargar_csv(id: str):
+    archivo_path = os.path.join("public", f"{id}.csv")
+    if os.path.exists(archivo_path):
+        return FileResponse(archivo_path, media_type="text/csv", filename="resultado.csv")
+    return {"error": "Archivo no disponible"}
+
+@app.get("/json/{id}")
+def descargar_json(id: str):
     archivo_path = os.path.join("public", f"{id}.json")
     if os.path.exists(archivo_path):
         return FileResponse(archivo_path, media_type="application/json", filename="resultado.json")
