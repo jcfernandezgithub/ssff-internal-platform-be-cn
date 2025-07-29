@@ -86,10 +86,10 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict):
             writer.writeheader()
 
             first = True
-            # for entry in json_data:
-            for i, entry in enumerate(json_data):
-                if i >= 10:
-                    break
+            for entry in json_data:
+            # for i, entry in enumerate(json_data):
+            #     if i >= 10:
+            #         break
 
                 texto_pdf = extraer_texto_pdf(entry["pdf"])[:3000]
                 prompt_cambio = f"""
