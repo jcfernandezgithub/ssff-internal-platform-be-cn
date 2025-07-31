@@ -245,15 +245,26 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
 
                 prompt_cambio = f"""
                 \"\"\"{texto_pdf}\"\"\"
-                ¿Es una solicitud de cambio de nombre? Si sí, responde con:
+
+                ¿Este texto corresponde a una solicitud de cambio de nombre? Si es así, extrae la siguiente información del menor cuyo nombre será cambiado:
+
+                - nombre_original: el nombre actual del menor (no el de la persona que representa).
+                - nombre_nuevo: el nombre nuevo que solicita.
+                - rut: la cédula nacional de identidad del menor (ignora la del apoderado o representante legal).
+                - pdf: {entry['pdf']}
+
+                Responde estrictamente con el siguiente formato JSON:
+
                 {{
-                  "nombre_original": "...",
-                  "nombre_nuevo": "...",
-                  "rut": "...",
-                  "pdf": "{entry['pdf']}"
+                "nombre_original": "...",
+                "nombre_nuevo": "...",
+                "rut": "...",
+                "pdf": "{entry['pdf']}"
                 }}
-                Si no, responde solo con null.
+
+                Si el texto no corresponde a una solicitud de cambio de nombre, responde con: null
                 """
+
 
                 try:
                     sub_resp = model.generate_content(prompt_cambio)
