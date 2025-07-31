@@ -257,7 +257,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                 "pdf": "{entry['pdf']}"
                 }}
 
-                📌 Instrucciones:
+                Instrucciones:
                 - "nombre_original": el nombre actual de la persona que solicita el cambio (ya sea menor representado o adulto).
                 - "nombre_nuevo": el nuevo nombre solicitado.
                 - "rut": el número de cédula o RUT de esa persona. No importa si aparece como “RUT”, “cédula de identidad” o “cédula nacional de identidad”; todas son válidas.
@@ -265,7 +265,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                     - Si otra persona (como un padre o madre) actúa en representación, **NO uses su cédula**, solo la de quien cambia su nombre.
                     - Si el número de cédula del solicitante no aparece en el texto, escribí `"rut": "null"`.
 
-                🔒 No inventes datos. Solo usá la información explícitamente disponible en el texto.
+                No inventes datos. Solo usá la información explícitamente disponible en el texto.
 
                 Si el texto **no** corresponde a una solicitud de cambio de nombre, respondé únicamente con: null
                 """
