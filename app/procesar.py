@@ -246,14 +246,9 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                 prompt_cambio = f"""
                 \"\"\"{texto_pdf}\"\"\"
 
-                ¿Este texto corresponde a una solicitud de cambio de nombre? Si es así, extrae la siguiente información del menor cuyo nombre será cambiado:
+                ¿Este texto corresponde a una solicitud de cambio de nombre?
 
-                - nombre_original: el nombre actual del menor (no el de la persona que representa).
-                - nombre_nuevo: el nombre nuevo que solicita.
-                - rut: la cédula nacional de identidad del menor (ignora la del apoderado o representante legal).
-                - pdf: {entry['pdf']}
-
-                Responde estrictamente con el siguiente formato JSON:
+                Si la respuesta es sí, extraé exclusivamente la información de la persona cuyo nombre será cambiado, ya sea menor de edad o adulto, y completá el siguiente formato JSON:
 
                 {{
                 "nombre_original": "...",
@@ -262,7 +257,17 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                 "pdf": "{entry['pdf']}"
                 }}
 
-                Si el texto no corresponde a una solicitud de cambio de nombre, responde con: null
+                📌 Instrucciones:
+                - "nombre_original": el nombre actual de la persona que solicita el cambio (ya sea menor representado o adulto).
+                - "nombre_nuevo": el nuevo nombre solicitado.
+                - "rut": el número de cédula o RUT de esa persona. No importa si aparece como “RUT”, “cédula de identidad” o “cédula nacional de identidad”; todas son válidas.
+                    - Si hay varias cédulas o RUTs, identificá la correspondiente a la persona cuyo nombre cambia.
+                    - Si otra persona (como un padre o madre) actúa en representación, **NO uses su cédula**, solo la de quien cambia su nombre.
+                    - Si el número de cédula del solicitante no aparece en el texto, escribí `"rut": "null"`.
+
+                🔒 No inventes datos. Solo usá la información explícitamente disponible en el texto.
+
+                Si el texto **no** corresponde a una solicitud de cambio de nombre, respondé únicamente con: null
                 """
 
 
