@@ -248,7 +248,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
 
                 ¿Este texto corresponde a una solicitud de cambio de nombre?
 
-                Si la respuesta es sí, extraé exclusivamente la información de la persona cuyo nombre será cambiado, ya sea menor de edad o adulto, y completá el siguiente formato JSON:
+                Si la respuesta es sí, extraé exclusivamente la información de la persona cuyo nombre será cambiado (ya sea menor o adulto), y devolvé el siguiente JSON:
 
                 {{
                 "nombre_original": "...",
@@ -257,17 +257,19 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                 "pdf": "{entry['pdf']}"
                 }}
 
-                Instrucciones:
-                - "nombre_original": el nombre actual de la persona que solicita el cambio (ya sea menor representado o adulto).
-                - "nombre_nuevo": el nuevo nombre solicitado.
-                - "rut": el número de cédula o RUT de esa persona. No importa si aparece como “RUT”, “cédula de identidad” o “cédula nacional de identidad”; todas son válidas.
-                    - Si hay varias cédulas o RUTs, identificá la correspondiente a la persona cuyo nombre cambia.
-                    - Si otra persona (como un padre o madre) actúa en representación, **NO uses su cédula**, solo la de quien cambia su nombre.
-                    - Si el número de cédula del solicitante no aparece en el texto, escribí `"rut": "null"`.
+                Instrucciones clave:
+                - "nombre_original": debe ser el nombre de la persona a la que se le cambiará el nombre.
+                - "nombre_nuevo": el nuevo nombre que se solicita para esa persona.
+                - "rut": debe ser **el número de cédula o RUT de la persona cuyo nombre será cambiado**, si aparece.
+                    - Si aparece más de un RUT, sólo se debe usar el que corresponde a esa persona.
+                    - Si **la persona que cambia su nombre es menor y su RUT no aparece**, colocar `"rut": "null"`.
+                    - Nunca coloques el RUT de quien representa al menor.
 
-                No inventes datos. Solo usá la información explícitamente disponible en el texto.
+                Consejo: si hay una persona actuando "en representación de su hijo/hija", el RUT suele estar asociado al adulto. Asegurate de que el RUT **coincida con la persona cuyo nombre cambiará**, no con quien presenta la solicitud.
 
-                Si el texto **no** corresponde a una solicitud de cambio de nombre, respondé únicamente con: null
+                No inventes datos. Si no hay suficiente información para completar algún campo, colocá "null".
+
+                Si el texto **no** corresponde a una solicitud de cambio de nombre, respondé solo con: null
                 """
 
 
