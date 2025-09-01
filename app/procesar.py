@@ -10,7 +10,9 @@ from PyPDF2 import PdfReader
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import google.generativeai as genai
-from app.utils import extraer_texto_pdf  # Asegúrate de tener esta función
+from app.utils import extraer_texto_pdf
+from urllib.parse import urlparse, urljoin
+
 
 # def ejecutar_proceso(url: str, output_path: str, estado: dict):
 #     try:
@@ -159,6 +161,24 @@ from app.utils import extraer_texto_pdf  # Asegúrate de tener esta función
 #         print(f"❌ Error general en ejecutar_proceso: {e}")
 #         estado["status"] = "error"
 
+def _normalize_pdf_url(href: str, base_url: str) -> str | None:
+    """Devuelve una URL absoluta válida o None si debe ignorarse."""
+    if not href:
+        return None
+    href = str(href).strip()
+    low = href.lower()
+    # valores inválidos comunes
+    if low in {"none", "null", "#", "javascript:void(0)"}:
+        return None
+
+    parsed = urlparse(href)
+    # si ya es http/https con netloc, la tomo tal cual
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return href
+
+    # si es relativa, la uno al base
+    # (no exijo .pdf porque algunos sistemas generan rutas sin extensión)
+    return urljoin(base_url, href)
 
 def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str):
     try:
@@ -197,7 +217,6 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                 print("🔍 Se encontró el encabezado de la sección de cambios de nombre")
                 continue
 
-            # 🔴 Corte al detectar nuevo encabezado fuera de la sección deseada
             if start_collecting and (
                 "Reconstituciones Inscripción de Dominio" in text or
                 "Rectificaciones" in text or
@@ -210,10 +229,14 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
             if start_collecting and len(tds) >= 2:
                 nombre = tds[0].get_text(strip=True)
                 a_tag = tds[1].find("a")
-                pdf = a_tag["href"] if a_tag else None
-                results.append({"nombre": nombre, "pdf": pdf})
+                href = a_tag["href"] if a_tag and a_tag.has_attr("href") else None
+                pdf_url = _normalize_pdf_url(href, url)
+                if not pdf_url:
+                    print(f"⏭️ Salteando entrada sin PDF válido: {nombre} → {href}")
+                    continue
+                results.append({"nombre": nombre, "pdf": pdf_url})
 
-        print(f"📄 Total de posibles PDFs encontrados: {len(results)}")
+        print(f"📄 Total de posibles PDFs encontrados (válidos): {len(results)}")
         results.sort(key=lambda x: x.get("nombre", ""))
 
         estado["total"] = len(results)
@@ -230,7 +253,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
         csv_path = f"{base_name}.csv"
 
         with open(output_path, "w", encoding="utf-8") as json_file, \
-             open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
+            open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
 
             json_file.write("[\n")
             writer = csv.DictWriter(csv_file, fieldnames=["nombre_original", "nombre_nuevo", "rut", "pdf"])
@@ -240,42 +263,47 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
             guardados = 0
 
             for entry in results:
-                print(f"📄 Procesando: {entry['nombre']}")
-                texto_pdf = extraer_texto_pdf(entry["pdf"])[:3000]
-
-                prompt_cambio = f"""
-                \"\"\"{texto_pdf}\"\"\"
-
-                ¿Este texto corresponde a una solicitud de cambio de nombre?
-
-                Si la respuesta es sí, extraé exclusivamente la información de la persona cuyo nombre será cambiado (ya sea menor o adulto), y devolvé el siguiente JSON:
-
-                {{
-                "nombre_original": "...",
-                "nombre_nuevo": "...",
-                "rut": "...",
-                "pdf": "{entry['pdf']}"
-                }}
-
-                Instrucciones clave:
-                - "nombre_original": debe ser el nombre de la persona a la que se le cambiará el nombre.
-                - "nombre_nuevo": el nuevo nombre que se solicita para esa persona.
-                - "rut": debe ser **el número de cédula o RUT de la persona cuyo nombre será cambiado**, si aparece.
-                    - Si aparece más de un RUT, sólo se debe usar el que corresponde a esa persona.
-                    - Si **la persona que cambia su nombre es menor y su RUT no aparece**, colocar `"rut": "null"`.
-                    - Nunca coloques el RUT de quien representa al menor.
-
-                Consejo: si hay una persona actuando "en representación de su hijo/hija", el RUT suele estar asociado al adulto. Asegurate de que el RUT **coincida con la persona cuyo nombre cambiará**, no con quien presenta la solicitud.
-
-                No inventes datos. Si no hay suficiente información para completar algún campo, colocá "null".
-
-                Si el texto **no** corresponde a una solicitud de cambio de nombre, respondé solo con: null
-                """
-
+                pdf_url = entry["pdf"]
+                print(f"📄 Procesando: {entry['nombre']} → {pdf_url}")
+                content = ""  # 👈 evita 'referenced before assignment'
 
                 try:
+                    # extraer texto del PDF (manejar error y continuar)
+                    try:
+                        texto_pdf = extraer_texto_pdf(pdf_url)[:3000]
+                    except Exception as e:
+                        print(f"❌ Error extrayendo texto del PDF {pdf_url}: {e}")
+                        # avanzar al siguiente sin romper el proceso
+                        continue
+
+                    prompt_cambio = f"""
+                    \"\"\"{texto_pdf}\"\"\"
+
+                    ¿Este texto corresponde a una solicitud de cambio de nombre?
+
+                    Si la respuesta es sí, extraé exclusivamente la información de la persona cuyo nombre será cambiado (ya sea menor o adulto), y devolvé el siguiente JSON:
+
+                    {{
+                    "nombre_original": "...",
+                    "nombre_nuevo": "...",
+                    "rut": "...",
+                    "pdf": "{pdf_url}"
+                    }}
+
+                    Instrucciones clave:
+                    - "nombre_original": debe ser el nombre de la persona a la que se le cambiará el nombre.
+                    - "nombre_nuevo": el nuevo nombre que se solicita para esa persona.
+                    - "rut": debe ser **el número de cédula o RUT de la persona cuyo nombre será cambiado**, si aparece.
+                        - Si aparece más de un RUT, sólo se debe usar el que corresponde a esa persona.
+                        - Si **la persona que cambia su nombre es menor y su RUT no aparece**, colocar "rut": "null".
+                        - Nunca coloques el RUT de quien representa al menor.
+                    - No inventes datos. Si falta info, usá "null".
+
+                    Si NO corresponde a cambio de nombre, respondé solo con: null
+                    """
+
                     sub_resp = model.generate_content(prompt_cambio)
-                    content = sub_resp.text.strip()
+                    content = (sub_resp.text or "").strip()
 
                     parsed = None
                     match = re.search(r"{\s*\"nombre_original\".*?}", content, re.DOTALL)
@@ -296,15 +324,18 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                         first = False
                     else:
                         print("⛔ No se detectó un cambio válido.")
-                except Exception as e:
-                    print(f"⚠️ Error al procesar PDF: {entry['pdf']}")
-                    print(f"💬 Gemini devolvió:\n{content}")
-                    print(f"🧨 Error: {e}")
 
-                estado["procesados"] += 1
-                estado["progreso"] = round(estado["procesados"] * 100 / estado["total"])
-                with open(estado_path, "w") as f:
-                    json.dump(estado, f)
+                except Exception as e:
+                    print(f"⚠️ Error al procesar PDF: {pdf_url}")
+                    if content:
+                        print(f"💬 Gemini devolvió (primeros 500 chars):\n{content[:500]}")
+                    print(f"🧨 Error: {e}")
+                finally:
+                    # actualizar progreso SIEMPRE, incluso si hubo error
+                    estado["procesados"] += 1
+                    estado["progreso"] = round(estado["procesados"] * 100 / max(1, estado["total"]))
+                    with open(estado_path, "w") as f:
+                        json.dump(estado, f)
 
             json_file.write("\n]\n")
 
