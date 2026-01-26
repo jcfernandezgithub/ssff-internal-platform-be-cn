@@ -245,8 +245,12 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
         with open(estado_path, "w") as f:
             json.dump(estado, f)
 
-        # 🔐 Configurar Gemini
-        genai.configure(api_key="AIzaSyBm2Ipwu_Nq7wsiept_5S0h5ETjYm4OUU4")
+        # 🔐 Configurar Gemini]
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("Falta GEMINI_API_KEY")
+
+        genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name="gemini-2.5-flash")
 
         base_name, _ = os.path.splitext(output_path)
