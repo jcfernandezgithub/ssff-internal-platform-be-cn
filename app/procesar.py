@@ -247,7 +247,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
 
         # 🔐 Configurar Gemini
         genai.configure(api_key="AIzaSyBvM_MY7Rrnhh2lDtyjDpSWtN3WnpSuVcs")
-        model = genai.GenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
         base_name, _ = os.path.splitext(output_path)
         csv_path = f"{base_name}.csv"
