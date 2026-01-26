@@ -13,7 +13,16 @@ import google.generativeai as genai
 from app.utils import extraer_texto_pdf
 from urllib.parse import urlparse, urljoin
 
+# ✅ Configuración GLOBAL (una sola vez)
+_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not _GEMINI_API_KEY:
+    raise RuntimeError("Falta GEMINI_API_KEY en variables de entorno")
 
+genai.configure(api_key=_GEMINI_API_KEY)
+
+# ⚠️ Con el SDK legacy, este es el más estable.
+# Si te sigue tirando 404 con gemini-2.5-flash, cambiá a "gemini-pro".
+MODEL = genai.GenerativeModel(model_name="gemini-2.5-flash")
 # def ejecutar_proceso(url: str, output_path: str, estado: dict):
 #     try:
 #         print("🚀 Iniciando proceso de scraping")
