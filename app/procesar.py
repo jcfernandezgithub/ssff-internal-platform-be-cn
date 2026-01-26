@@ -246,7 +246,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
             json.dump(estado, f)
 
         # 🔐 Configurar Gemini
-        genai.configure(api_key="AIzaSyBvM_MY7Rrnhh2lDtyjDpSWtN3WnpSuVcs")
+        genai.configure(api_key="AIzaSyBm2Ipwu_Nq7wsiept_5S0h5ETjYm4OUU4")
         model = genai.GenerativeModel(model_name="gemini-2.5-flash")
 
         base_name, _ = os.path.splitext(output_path)
