@@ -260,7 +260,7 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
             raise RuntimeError("Falta GEMINI_API_KEY")
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+        model = genai.GenerativeModel(model_name="gemini-3.5-flash")
 
         base_name, _ = os.path.splitext(output_path)
         csv_path = f"{base_name}.csv"
