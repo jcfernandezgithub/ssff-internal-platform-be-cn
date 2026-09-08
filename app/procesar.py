@@ -10,6 +10,7 @@ from PyPDF2 import PdfReader
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import google.generativeai as genai
+from app.gemini_audit import registrar_consumo_gemini
 from app.utils import extraer_texto_pdf
 from urllib.parse import urlparse, urljoin
 
@@ -68,7 +69,7 @@ MODEL = genai.GenerativeModel(model_name="gemini-3.5-flash")
 #         estado["procesados"] = 0
 #         estado["progreso"] = 0
 
-#         genai.configure(api_key="AIzaSyAl4sGdg1dbVHwEIhEsBLzv6O7qtRKonVw")
+#         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 #         model = genai.GenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
 
 #         print("🤖 Solicitando filtrado inicial a Gemini...")
@@ -316,6 +317,10 @@ def ejecutar_proceso(url: str, output_path: str, estado: dict, estado_path: str)
                     """
 
                     sub_resp = model.generate_content(prompt_cambio)
+                    registrar_consumo_gemini(
+                        sub_resp,
+                        model="gemini-3.5-flash",
+                    )
                     content = (sub_resp.text or "").strip()
 
                     parsed = None
