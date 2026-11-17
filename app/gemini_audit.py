@@ -14,6 +14,18 @@ from typing import Any
 _client: Any | None = None
 _client_lock = threading.Lock()
 
+# Tarifas de referencia en USD por cada 1.000.000 de tokens (input / output)
+TARIFAS_TOKENS_1M: dict[str, tuple[float, float]] = {
+    "gemini-3.5-flash": (0.30, 2.50),
+    "gemini-3-flash": (0.30, 2.50),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.5-flash-lite": (0.10, 0.40),
+    "gemini-2.5-pro": (1.25, 10.00),
+    "gemini-3.1-flash-image": (0.50, 60.00),
+    "gemini-3-pro-image": (2.00, 120.00),
+}
+TARIFA_DEFAULT_1M: tuple[float, float] = (0.30, 2.50)
+
 
 def _is_enabled() -> bool:
     return os.getenv("BIGQUERY_AUDIT_ENABLED", "false").strip().lower() in {
@@ -58,6 +70,29 @@ def _get_client() -> Any:
         return _client
 
 
+def _calcular_costo_usd(
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> float:
+    """Calcula el costo en USD según el modelo y los tokens consumidos."""
+    modelo_norm = (model or "").strip().lower()
+    tarifa = TARIFAS_TOKENS_1M.get(modelo_norm)
+
+    if tarifa is None:
+        # Coincidencia por prefijo para variantes con sufijo de versión (ej. -001, -preview)
+        for clave, valores in TARIFAS_TOKENS_1M.items():
+            if modelo_norm.startswith(clave):
+                tarifa = valores
+                break
+
+    input_rate, output_rate = tarifa or TARIFA_DEFAULT_1M
+    costo = ((prompt_tokens / 1_000_000) * input_rate) + (
+        (completion_tokens / 1_000_000) * output_rate
+    )
+    return round(costo, 6)
+
+
 def registrar_consumo_gemini(
     response: Any,
     *,
@@ -65,7 +100,7 @@ def registrar_consumo_gemini(
     agent_id: str | None = None,
     product: str | None = None,
 ) -> bool:
-    """Registra los tokens de una respuesta sin interrumpir el procesamiento."""
+    """Registra los tokens y el costo USD sin interrumpir el procesamiento."""
     if not _is_enabled():
         return False
 
@@ -80,18 +115,32 @@ def registrar_consumo_gemini(
         table_id = os.getenv("BIGQUERY_TABLE_ID", "gemini_tokens")
         table_ref = f"{project_id}.{dataset_id}.{table_id}"
 
+        prompt_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
+        candidates_tokens = int(getattr(usage, "candidates_token_count", 0) or 0)
+        thoughts_tokens = int(getattr(usage, "thoughts_token_count", 0) or 0)
+        total_tokens = int(getattr(usage, "total_token_count", 0) or 0)
+
+        # Los tokens de razonamiento (thoughts) se facturan como tokens de salida
+        completion_tokens = candidates_tokens + thoughts_tokens
+        if total_tokens > (prompt_tokens + completion_tokens) and thoughts_tokens == 0:
+            completion_tokens = total_tokens - prompt_tokens
+        if total_tokens < (prompt_tokens + completion_tokens):
+            total_tokens = prompt_tokens + completion_tokens
+
+        cost_usd = _calcular_costo_usd(model, prompt_tokens, completion_tokens)
+
         row = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent_id": agent_id
-            or os.getenv("BIGQUERY_AUDIT_AGENT_ID", "SSFF_Cambio_Nombre"),
+            or os.getenv("BIGQUERY_AUDIT_AGENT_ID", "Cambio_de_Nombre"),
             "product": product
-            or os.getenv("BIGQUERY_AUDIT_PRODUCT", "SSFF_Internal_Platform"),
+            or os.getenv("BIGQUERY_AUDIT_PRODUCT", "FORJA"),
             "model": model,
-            "prompt_tokens": int(getattr(usage, "prompt_token_count", 0) or 0),
-            "completion_tokens": int(
-                getattr(usage, "candidates_token_count", 0) or 0
-            ),
-            "total_tokens": int(getattr(usage, "total_token_count", 0) or 0),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "unit_type": "tokens",
+            "cost_usd": cost_usd,
         }
 
         errors = _get_client().insert_rows_json(
@@ -105,7 +154,7 @@ def registrar_consumo_gemini(
 
         print(
             "[BigQuery Audit] Consumo registrado "
-            f"para agent_id='{row['agent_id']}'."
+            f"para agent_id='{row['agent_id']}' | costo=${cost_usd:.6f} USD."
         )
         return True
     except Exception as exc:
