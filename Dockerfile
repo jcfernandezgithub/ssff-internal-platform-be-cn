@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Paquetes mínimos para que apt funcione bien si --with-deps los usa
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git && \
+    ca-certificates curl git libatomic1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar deps Python (aprovecha caché: copiá solo requirements primero)
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir --upgrade "playwright>=1.54.0"
 
 # Instalar navegadores + dependencias del sistema correctas para tu OS
-RUN python -m playwright install --with-deps
+RUN python -m playwright install --with-deps chromium
 
 # Copiá el resto del código
 COPY . /app

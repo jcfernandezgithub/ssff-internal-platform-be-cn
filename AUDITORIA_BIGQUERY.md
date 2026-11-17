@@ -54,3 +54,40 @@ BIGQUERY_AUDIT_ENABLED=false
 ```
 
 El servicio continuará funcionando sin intentar conectarse a BigQuery.
+
+## Alcance y verificación
+
+La única llamada activa a `generate_content` en `app/procesar.py` invoca la
+auditoría inmediatamente después de recibir la respuesta y antes de leer su texto.
+Por tanto, una respuesta que después falle al interpretarse como JSON también
+intenta registrar su consumo.
+
+El registro es **best-effort**: si faltan metadatos, hay errores de credenciales
+o BigQuery rechaza la inserción, se escribe un log y se continúa. No existe una
+cola persistente para recuperar registros fallidos. Esto no garantiza una fila
+por cada consumo ante fallos. `agent_id` identifica el servicio configurado;
+no identifica al usuario final autenticado.
+
+Pruebas locales con cliente simulado (sin consumir tokens ni insertar filas):
+
+```sh
+python3 -B -m unittest discover -s tests -v
+```
+
+Para verificar producción, procesar una URL y contrastar los logs con las filas
+recientes del producto configurado:
+
+```sql
+SELECT timestamp, agent_id, product, model,
+       prompt_tokens, completion_tokens, total_tokens
+FROM `poc-ia-growth-y-productos.audit_ia.gemini_tokens`
+WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
+  AND product = 'SSFF_Internal_Platform'
+ORDER BY timestamp DESC
+LIMIT 100;
+```
+
+La credencial de ejecución debe tener permiso para insertar en esa tabla.
+La cuenta usada para esta consulta necesita además permisos de lectura y
+ejecución de consultas. Las pruebas simuladas no validan esos permisos, el
+esquema real, las variables del despliegue ni la disponibilidad del modelo.
